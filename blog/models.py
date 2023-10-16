@@ -8,6 +8,24 @@ class PostQuerySet(models.QuerySet):
         posts_at_year = (self.filter(published_at__year=year).
                          order_by('published_at'))
         return posts_at_year
+    
+    def popular(self):
+        popular_posts = (self.annotate(models.Count('likes', distinct=True)).
+                         order_by('-likes__count'))
+        return popular_posts
+
+    def fetch_with_comment_count(self):
+        most_popular_posts_ids = [post.id for post in self]
+        posts_with_comments = (
+            Post.objects.filter(id__in=most_popular_posts_ids).
+            annotate(models.Count('comments', distinct=True))
+            )
+        ids_and_comments = posts_with_comments.values_list('id',
+                                                           'comments__count')
+        count_for_id = dict(ids_and_comments)
+        for post in self:
+            post.comments__count = count_for_id[post.id]
+        return self
 
 
 class TagQuerySet(models.QuerySet):
@@ -55,7 +73,7 @@ class Post(models.Model):
 class Tag(models.Model):
     title = models.CharField('Тег', max_length=20, unique=True)
     objects = TagQuerySet.as_manager()
-    
+
     def __str__(self):
         return self.title
 
