@@ -1,6 +1,7 @@
 from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.db.models import Count, Prefetch
 
 
 class PostQuerySet(models.QuerySet):
@@ -10,7 +11,7 @@ class PostQuerySet(models.QuerySet):
         return posts_at_year
     
     def popular(self):
-        popular_posts = (self.annotate(models.Count('likes', distinct=True)).
+        popular_posts = (self.annotate(Count('likes', distinct=True)).
                          order_by('-likes__count'))
         return popular_posts
 
@@ -18,7 +19,7 @@ class PostQuerySet(models.QuerySet):
         most_popular_posts_ids = [post.id for post in self]
         posts_with_comments = (
             Post.objects.filter(id__in=most_popular_posts_ids).
-            annotate(models.Count('comments', distinct=True))
+            annotate(Count('comments', distinct=True))
             )
         ids_and_comments = posts_with_comments.values_list('id',
                                                            'comments__count')
@@ -26,12 +27,15 @@ class PostQuerySet(models.QuerySet):
         for post in self:
             post.comments__count = count_for_id[post.id]
         return self
-
+    
+    def fetch_with_tags(self):
+        tags = Prefetch('tags', queryset=Tag.objects.annotate(Count('posts')))
+        return self.prefetch_related(tags)
+    
 
 class TagQuerySet(models.QuerySet):
     def popular_tags(self):
-        popular_tags = (self.annotate(models.Count('posts')).
-                        order_by('-posts__count'))
+        popular_tags = (self.annotate(Count('posts')).order_by('-posts__count'))
         return popular_tags
     
 
