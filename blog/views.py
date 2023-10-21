@@ -88,7 +88,7 @@ def post_detail(request, slug):
 
 
 def tag_filter(request, tag_title):
-    tag = Tag.objects.get(title=tag_title)
+    tag = get_object_or_404(Tag, title=tag_title)
     most_popular_tags = Tag.objects.popular_tags()[0:5]
 
     most_popular_posts = []  # TODO. Как это посчитать?
